@@ -31,13 +31,12 @@ def load_smtp_config():
 
 smtp_config = load_smtp_config()
 
-
 # Initialize MinIO client
 minio_client = Minio(
-    smtp_config.get('minio_server', None),
-    access_key=smtp_config.get('minio_access_key', None),
-    secret_key=smtp_config.get('minio_secret_key', None),
-    secure=smtp_config.get('minio_secure', None),
+    smtp_config.get('minio_server', "localhost:9000"),
+    access_key=smtp_config.get('minio_access_key', "minioadmin"),
+    secret_key=smtp_config.get('minio_secret_key', "minioadmin"),
+    secure=smtp_config.get('minio_secure', False),
 )
 
 def save_email_result(email_id: str, status: str, detail: str, client_ip: str, headers: dict, message_length: int):
@@ -108,7 +107,7 @@ def add_attachment(object_name: str):
     attachment.add_header('Content-Disposition', 'attachment', filename=filename)
     return attachment
 
-def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, headers: dict, attachment_names: List[str]):
+def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, headers: dict, attachment_names: List[Optional[str]]):
     try:
         message = MIMEMultipart()
         message["From"] = smtp_config["sender_email"]
@@ -121,8 +120,9 @@ def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, 
 
         if attachment_names:
             for object_name in attachment_names:
-                attachment_part = add_attachment(object_name)
-                message.attach(attachment_part)
+                if object_name:  # Ensure object_name is not None
+                    attachment_part = add_attachment(object_name)
+                    message.attach(attachment_part)
 
         message_length = len(message.as_string())
 
@@ -167,7 +167,7 @@ async def send_email(
     subject: str = Form(...),
     body: str = Form(...),
     debug: bool = Form(False),
-    attachments: List[UploadFile] = File(None)
+    attachments: Optional[List[UploadFile]] = File(None)
 ):
     email_id = str(uuid.uuid4())
     client_ip = request.client.host
