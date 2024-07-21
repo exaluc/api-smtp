@@ -88,6 +88,12 @@ class EmailRequest(BaseModel):
             raise ValueError('Body content must be less than 2000 characters')
         return v
 
+    @field_validator('body_type')
+    def validate_body_type(cls, v):
+        if v not in ["plain", "html"]:
+            raise ValueError('Body type must be either "plain" or "html"')
+        return v
+
 # Initialize MinIO client
 minio_client = Minio(
     smtp_config.get('minio_server', "localhost:9000"),
