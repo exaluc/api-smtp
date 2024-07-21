@@ -1,8 +1,12 @@
 {
+    "api_key": "b83f1368-155b-4e53-8151-d2ab788adc5e",
     "api_name": "High-Performance SMTP API",
     "api_description": "SMTP API mail dispatch with support for attachments.",
     "smtp_server": "maildev",
     "smtp_port": 1025,
+    "max_len_recipient_email": 64,
+    "max_len_subject": 255,
+    "max_len_body": 50000,
     "use_ssl": false,
     "use_password": false,
     "use_tls": false,
