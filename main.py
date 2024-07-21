@@ -2,7 +2,8 @@ import json
 import smtplib
 import uuid
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Form, UploadFile, File
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Form, UploadFile, File, Depends
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from typing import List, Optional
 from email.mime.text import MIMEText
@@ -18,6 +19,14 @@ from minio import Minio
 from minio.error import S3Error
 
 app = FastAPI()
+
+# API Key Dependency
+API_KEY = "your_api_key"
+api_key_header = APIKeyHeader(name="X-API-Key")
+
+async def get_api_key(api_key_header: str = Depends(api_key_header)):
+    if api_key_header != API_KEY:
+        raise HTTPException(status_code=403, detail="Could not validate credentials")
 
 class EmailRequest(BaseModel):
     recipient_email: str
@@ -164,7 +173,8 @@ async def send_email(
     subject: str = Form(...),
     body: str = Form(...),
     debug: bool = Form(False),
-    attachments: List[UploadFile] = File(None)
+    attachments: List[UploadFile] = File(None),
+    api_key: str = Depends(get_api_key)
 ):
     email_id = str(uuid.uuid4())
     client_ip = request.client.host
