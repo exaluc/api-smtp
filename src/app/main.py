@@ -67,6 +67,9 @@ minio_client = Minio(
 )
 
 def save_email_result(email_id: str, status: str, detail: str, client_ip: str, headers: dict, message_length: int):
+    # Remove sensitive headers
+    headers.pop("x-api-key", None)
+
     date_str = datetime.now().strftime("%Y-%m-%d")
     status_dir = "success" if status == "success" else "failure"
     dir_path = os.path.join("data", date_str, status_dir)
@@ -206,7 +209,7 @@ async def send_email(
     api_key: str = Depends(get_api_key)
 ):
     email_id = str(uuid.uuid4())
-    client_ip = request.client.host
+    client_ip = request.headers.get("x-real-ip") or request.client.host
     headers = dict(request.headers)
     email_request = EmailRequest(
         recipient_email=recipient_email,
