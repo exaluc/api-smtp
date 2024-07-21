@@ -1,5 +1,5 @@
 {
-    "smtp_server": "localhost",
+    "smtp_server": "maildev",
     "smtp_port": 1025,
     "use_ssl": false,
     "use_password": false,
@@ -7,7 +7,7 @@
     "sender_email": "your_email@example.com",
     "sender_domain": "devel.local.email",
     "sender_password": "your_password",
-    "minio_server": "localhost:9000",
+    "minio_server": "minio:9000",
     "minio_access_key": "minioadmin",
     "minio_secret_key": "minioadmin",
     "minio_secure": false

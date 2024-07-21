@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Form, UploadFile, File, Depends
 from fastapi.security.api_key import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -33,6 +33,24 @@ class EmailRequest(BaseModel):
     subject: str
     body: str
     debug: Optional[bool] = False
+
+    @field_validator('recipient_email')
+    def validate_email(cls, v):
+        if len(v) > 64:
+            raise ValueError('Email address must be less than 64 characters')
+        return v
+
+    @field_validator('subject')
+    def validate_subject(cls, v):
+        if len(v) > 255:
+            raise ValueError('Subject must be less than 255 characters')
+        return v
+
+    @field_validator('body')
+    def validate_body(cls, v):
+        if len(v) > 2000:
+            raise ValueError('Body content must be less than 2000 characters')
+        return v
 
 def load_smtp_config():
     with open('smtp_config.json', 'r') as file:
@@ -78,6 +96,17 @@ def save_debug_email(email_id: str, message: MIMEMultipart):
 def upload_to_minio(file: UploadFile):
     bucket_name = "emails"
     object_name = f"{uuid.uuid4()}_{file.filename}"
+
+    # Check the file size by reading it in chunks
+    max_size = 2 * 1024 * 1024  # 2MB
+    current_size = 0
+
+    for chunk in file.file:
+        current_size += len(chunk)
+        if current_size > max_size:
+            raise HTTPException(status_code=400, detail="Attachments must be smaller than 2MB.")
+
+    file.file.seek(0)  # Reset file pointer after reading
 
     minio_client.put_object(
         bucket_name,
@@ -185,13 +214,27 @@ async def send_email(
         body=body,
         debug=debug
     )
+    # Validate attachments count and size
+    if attachments and len(attachments) > 2:
+        raise HTTPException(status_code=400, detail="You can only upload up to 2 attachments.")
     
     attachment_names = []
     if attachments:
         for attachment in attachments:
+            # Validate attachment size by reading in chunks
+            max_size = 2 * 1024 * 1024  # 2MB
+            current_size = 0
+
+            for chunk in attachment.file:
+                current_size += len(chunk)
+                if current_size > max_size:
+                    raise HTTPException(status_code=400, detail="Attachments must be smaller than 2MB.")
+
+            attachment.file.seek(0)  # Reset file pointer after reading
+
             object_name = upload_to_minio(attachment)
             attachment_names.append(object_name)
-    
+
     background_tasks.add_task(send_email_task, email_request, email_id, client_ip, headers, attachment_names)
     return {"message": "Email is being sent in the background", "email_id": email_id}
 
