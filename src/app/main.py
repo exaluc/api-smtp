@@ -72,20 +72,23 @@ class EmailRequest(BaseModel):
 
     @field_validator('recipient_email')
     def validate_email(cls, v):
-        if len(v) > 64:
-            raise ValueError('Email address must be less than 64 characters')
+        max_len_recipient_email = smtp_config.get('max_len_recipient_email', 64)
+        if len(v) > max_len_recipient_email:
+            raise ValueError(f'Email address must be less than {max_len_recipient_email} characters')
         return v
 
     @field_validator('subject')
     def validate_subject(cls, v):
-        if len(v) > 255:
-            raise ValueError('Subject must be less than 255 characters')
+        max_len_subject = smtp_config.get('max_len_subject', 255)
+        if len(v) > max_len_subject:
+            raise ValueError(f'Subject must be less than {max_len_subject} characters')
         return v
 
     @field_validator('body')
     def validate_body(cls, v):
-        if len(v) > 2000:
-            raise ValueError('Body content must be less than 2000 characters')
+        max_length = smtp_config.get('max_len_body', 50000)
+        if len(v) > max_length:
+            raise ValueError(f'Body content must be less than {max_length} characters')
         return v
 
     @field_validator('body_type')
@@ -233,7 +236,7 @@ def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, 
     except Exception as e:
         save_email_result(email_id, "failure", f"An unexpected error occurred: {e}", client_ip, headers, 0)
 
-@app.post("/mail/send-with-attachments")
+@app.post("/v1/mail/send-with-attachments")
 async def send_email_with_attachments(
     background_tasks: BackgroundTasks,
     request: Request,
@@ -279,7 +282,7 @@ async def send_email_with_attachments(
     background_tasks.add_task(send_email_task, email_request, email_id, client_ip, headers, attachment_names)
     return {"message": "Email is being sent in the background", "email_id": email_id}
 
-@app.post("/mail/send")
+@app.post("/v1/mail/send")
 async def send_email_json(
     background_tasks: BackgroundTasks,
     request: Request,
