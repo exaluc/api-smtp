@@ -19,12 +19,12 @@ from minio import Minio
 from minio.error import S3Error
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 
-
 def load_smtp_config():
     with open('smtp_config.json', 'r') as file:
         return json.load(file)
 
 smtp_config = load_smtp_config()
+API_KEY = smtp_config.get('api_key', 'your_api_key')
 
 app = FastAPI(
     title=smtp_config.get('api_name'),
@@ -57,7 +57,6 @@ async def redoc_documentation():
     )
 
 # API Key Dependency
-API_KEY = "your_api_key"
 api_key_header = APIKeyHeader(name="X-API-Key")
 
 async def get_api_key(api_key_header: str = Depends(api_key_header)):
@@ -68,6 +67,7 @@ class EmailRequest(BaseModel):
     recipient_email: str
     subject: str
     body: str
+    body_type: Optional[str] = "plain"  # Added to specify "plain" or "html"
     debug: Optional[bool] = False
 
     @field_validator('recipient_email')
@@ -184,7 +184,7 @@ def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, 
         message["Date"] = formatdate(localtime=True)
         message["Message-ID"] = f"<{email_id}@{smtp_config['sender_domain']}>"
 
-        message.attach(MIMEText(email_request.body, "plain"))
+        message.attach(MIMEText(email_request.body, email_request.body_type))
 
         if attachment_names:
             for object_name in attachment_names:
@@ -227,13 +227,14 @@ def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, 
     except Exception as e:
         save_email_result(email_id, "failure", f"An unexpected error occurred: {e}", client_ip, headers, 0)
 
-@app.post("/send-email")
-async def send_email(
+@app.post("/mail/send-with-attachments")
+async def send_email_with_attachments(
     background_tasks: BackgroundTasks,
     request: Request,
     recipient_email: str = Form(...),
     subject: str = Form(...),
     body: str = Form(...),
+    body_type: str = Form("plain"),  # Accepting body type for HTML or plain text
     debug: bool = Form(False),
     attachments: List[UploadFile] = File(None),
     api_key: str = Depends(get_api_key)
@@ -245,6 +246,7 @@ async def send_email(
         recipient_email=recipient_email,
         subject=subject,
         body=body,
+        body_type=body_type,
         debug=debug
     )
     # Validate attachments count and size
@@ -269,6 +271,22 @@ async def send_email(
             attachment_names.append(object_name)
 
     background_tasks.add_task(send_email_task, email_request, email_id, client_ip, headers, attachment_names)
+    return {"message": "Email is being sent in the background", "email_id": email_id}
+
+@app.post("/mail/send")
+async def send_email_json(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    email_request: EmailRequest,
+    api_key: str = Depends(get_api_key)
+):
+    email_id = str(uuid.uuid4())
+    client_ip = request.headers.get("x-real-ip") or request.client.host
+    headers = dict(request.headers)
+
+    # No attachments handling in this endpoint
+
+    background_tasks.add_task(send_email_task, email_request, email_id, client_ip, headers, [])
     return {"message": "Email is being sent in the background", "email_id": email_id}
 
 if __name__ == "__main__":
