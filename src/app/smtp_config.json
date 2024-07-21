@@ -1,4 +1,6 @@
 {
+    "api_name": "High-Performance SMTP API",
+    "api_description": "SMTP API mail dispatch with support for attachments.",
     "smtp_server": "maildev",
     "smtp_port": 1025,
     "use_ssl": false,

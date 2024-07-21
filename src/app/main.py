@@ -17,8 +17,44 @@ import mimetypes
 import os
 from minio import Minio
 from minio.error import S3Error
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 
-app = FastAPI()
+
+def load_smtp_config():
+    with open('smtp_config.json', 'r') as file:
+        return json.load(file)
+
+smtp_config = load_smtp_config()
+
+app = FastAPI(
+    title=smtp_config.get('api_name'),
+    description=smtp_config.get('api_description'),
+    version="1.0.0",
+    docs_url=None,  # Disable the default docs
+    redoc_url=None,  # Disable the default redoc
+    openapi_url="/openapi.json"
+)
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_open_api_endpoint():
+    return app.openapi()
+
+@app.get("/docs", include_in_schema=False)
+async def get_documentation():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_ui_parameters={"displayRequestDuration": True},
+        swagger_favicon_url=None
+    )
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_documentation():
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - ReDoc",
+        redoc_favicon_url=None
+    )
 
 # API Key Dependency
 API_KEY = "your_api_key"
@@ -51,12 +87,6 @@ class EmailRequest(BaseModel):
         if len(v) > 2000:
             raise ValueError('Body content must be less than 2000 characters')
         return v
-
-def load_smtp_config():
-    with open('smtp_config.json', 'r') as file:
-        return json.load(file)
-
-smtp_config = load_smtp_config()
 
 # Initialize MinIO client
 minio_client = Minio(
