@@ -70,16 +70,13 @@ def upload_to_minio(file: UploadFile):
     bucket_name = "emails"
     object_name = f"{uuid.uuid4()}_{file.filename}"
 
-    # Save the file temporarily
-    temp_file_path = f"/tmp/{object_name}"
-    with open(temp_file_path, "wb") as temp_file:
-        temp_file.write(file.file.read())
-
-    # Upload the file to MinIO
-    minio_client.fput_object(bucket_name, object_name, temp_file_path)
-
-    # Remove the temporary file
-    os.remove(temp_file_path)
+    minio_client.put_object(
+        bucket_name,
+        object_name,
+        file.file,
+        length=-1,
+        part_size=10*1024*1024
+    )
 
     return object_name
 
@@ -107,7 +104,7 @@ def add_attachment(object_name: str):
     attachment.add_header('Content-Disposition', 'attachment', filename=filename)
     return attachment
 
-def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, headers: dict, attachment_names: List[Optional[str]]):
+def send_email_task(email_request: EmailRequest, email_id: str, client_ip: str, headers: dict, attachment_names: List[str]):
     try:
         message = MIMEMultipart()
         message["From"] = smtp_config["sender_email"]
@@ -167,7 +164,7 @@ async def send_email(
     subject: str = Form(...),
     body: str = Form(...),
     debug: bool = Form(False),
-    attachments: Optional[List[UploadFile]] = File(None)
+    attachments: List[UploadFile] = File(None)
 ):
     email_id = str(uuid.uuid4())
     client_ip = request.client.host
