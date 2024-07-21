@@ -138,3 +138,7 @@ Feel free to open issues or submit pull requests with improvements. Contribution
 ## License
 
 This project is licensed under the MIT License.
+
+## Author
+
+- [Lucian BLETAN](https://github.com/exaluc)
