@@ -63,7 +63,7 @@ The SMTP settings and API key are stored in the `smtp_config.json` file. The str
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/exaluc/api-smtp.git
+git clone https://github.com/gni/api-smtp.git
 cd api-smtp
 ```
 
@@ -141,7 +141,7 @@ This project is licensed under the MIT License.
 
 ## Author
 
-- [Lucian BLETAN](https://github.com/exaluc)
+- [Lucian BLETAN](https://github.com/gni)
 
 <!-- DOCKUMENTOR START -->
 
